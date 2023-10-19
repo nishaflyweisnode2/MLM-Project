@@ -51,8 +51,14 @@ var userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId, ref: 'User'
     }],
     active: {
+      type: Boolean, default: true
+    },
+    kycStatus: {
       type: Boolean, default: false
-    }, // Flag indicating if the distributor is active
+    },
+    uniqueId: {
+      type: String
+    },
     parentId: {
       type: mongoose.Schema.Types.ObjectId, ref: 'Distributor'
     },

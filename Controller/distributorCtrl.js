@@ -26,6 +26,13 @@ const createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10)
     const otp = OTP.generateOTP();
     if (!findUser) {
+
+      let uniqueId;
+      do {
+        uniqueId = Math.floor(Math.random() * 10000000000);
+      } while (await User.findOne({ uniqueId }));
+
+
       const newUser = await User.create({
         name: name,
         email: email,
@@ -35,7 +42,8 @@ const createUser = async (req, res) => {
         pincode: pincode,
         city: city,
         otp: otp,
-        userType: "Distributor"
+        userType: "Distributor",
+        uniqueId: uniqueId,
       });
 
       newUser.save();
