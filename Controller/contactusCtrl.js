@@ -1,4 +1,4 @@
-const ContactUs = require('./contactUsModel');
+const ContactUs = require('../Models/contactusModel');
 
 const createContactUs = async (req, res) => {
   try {
@@ -57,6 +57,39 @@ const getContactById = async (req, res) => {
 };
 
 
+
+const updateContact = async (req, res) => {
+  try {
+    const contactId = req.params.id;
+    const { phone, email, whatsapp } = req.body;
+
+    const updatedContact = await ContactUs.findByIdAndUpdate(
+      contactId,
+      { phone, email, whatsapp },
+      { new: true }
+    );
+
+    if (!updatedContact) {
+      return res.status(404).json({
+        message: 'Contact information not found',
+      });
+    }
+
+    res.status(200).json({
+      message: 'Contact information updated successfully',
+      data: updatedContact,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error updating contact information',
+      error: error.message,
+    });
+  }
+};
+
+
+
+
 const deleteContact = async (req, res) => {
   try {
     const contact = await ContactUs.findByIdAndRemove(req.params.id);
@@ -80,18 +113,13 @@ const deleteContact = async (req, res) => {
 
 
 
+
 module.exports = {
   createContactUs,
   getAllContacts,
   getContactById,
+  updateContact,
   deleteContact,
 };
 
 
-
-
-
-
-module.exports = {
-  createContactUs,
-};

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose"); 
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
@@ -22,8 +22,8 @@ const productSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: String,
-      required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PCategory",
     },
     brand: {
       type: String,
@@ -37,9 +37,8 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    images: [
+    image: [
       {
-        public_id: String,
         url: String,
       },
     ],
@@ -52,8 +51,12 @@ const productSchema = new mongoose.Schema(
         postedby: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       },
     ],
-    totalrating: {
-      type: String,
+    totalRating: {
+      type: Number,
+      default: 0,
+    },
+    averageRating: {
+      type: Number,
       default: 0,
     },
   },

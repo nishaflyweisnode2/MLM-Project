@@ -6,15 +6,15 @@ const {
   getCoupon,
   updateCoupon,
   deleteCoupon
-  
+
 } = require("../Controller/CouponCtrl");
 const router = express.Router();
 
-router.post("/", isAuthenticatedUser, /* isAdmin, */ createCoupon);
-router.get("/", isAuthenticatedUser, /* isAdmin, */ getAllCoupons);
-router.get("/:id", isAuthenticatedUser, /* isAdmin, */ getCoupon);
-router.put("/:id", isAuthenticatedUser, /* isAdmin, */ updateCoupon);
-router.delete("/:id", isAuthenticatedUser, /* isAdmin, */ deleteCoupon);
+router.post("/", isAuthenticatedUser, createCoupon);
+router.get("/", isAuthenticatedUser, getAllCoupons);
+router.get("/:id", isAuthenticatedUser, getCoupon);
+router.put("/:id", isAuthenticatedUser, updateCoupon);
+router.delete("/:id", isAuthenticatedUser, deleteCoupon);
 
 module.exports = router;
 

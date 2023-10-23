@@ -3,7 +3,11 @@ const validateMongoDbId = require("../utils/validateMongodbId");
 
 const createCategory = async (req, res) => {
   try {
-    const newCategory = await Category.create(req.body);
+    if (!req.file) {
+      return res.status(400).json({ status: 400, error: "Image file is required" });
+    }
+
+    const newCategory = await Category.create({ ...req.body, image: req.file.path, });
     res.json({
       status: 200,
       message: "Category created successfully",
@@ -21,19 +25,28 @@ const updateCategory = async (req, res) => {
   const { id } = req.params;
   validateMongoDbId(id);
   try {
-    const updatedCategory = await Category.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
-    res.json({
+    if (!req.file) {
+      return res.status(400).json({ status: 400, error: "Image file is required" });
+    }
+
+    const update = {
+      ...req.body,
+      image: req.file.path,
+    };
+
+    const updatedCategory = await Category.findByIdAndUpdate(id, update, { new: true });
+
+    if (!updatedCategory) {
+      return res.status(404).json({ status: 404, error: "Category not found" });
+    }
+
+    res.status(200).json({
       status: 200,
       message: "Category updated successfully",
-      data: updatedCategory
+      data: updatedCategory,
     });
   } catch (error) {
-    res.json({
-      status: 500,
-      error: error.message
-    })
+    res.status(500).json({ status: 500, error: error.message });
   }
 };
 
@@ -88,6 +101,9 @@ const getallCategory = async (req, res) => {
     });
   }
 };
+
+
+
 
 module.exports = {
   createCategory,

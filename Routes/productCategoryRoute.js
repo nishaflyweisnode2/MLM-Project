@@ -6,13 +6,16 @@ const {
   getCategory,
   getallCategory,
 } = require("../Controller/productCategoryCtrl");
-// const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { isAuthenticatedUser } = require("../Middleware/auth");
 const router = express.Router();
+const upload = require("../Middleware/upload");
 
-router.post("/", /* authMiddleware, isAdmin, */ createCategory);
-router.put("/:id", /* authMiddleware, isAdmin, */ updateCategory);
-router.delete("/:id", /* authMiddleware, isAdmin, */ deleteCategory);
-router.get("/:id", getCategory);
-router.get("/", getallCategory);
+
+
+router.post("/", isAuthenticatedUser, upload.single("image"), createCategory);
+router.put("/:id", isAuthenticatedUser, upload.single("image"), updateCategory);
+router.delete("/:id", isAuthenticatedUser, deleteCategory);
+router.get("/:id", isAuthenticatedUser, getCategory);
+router.get("/", isAuthenticatedUser, getallCategory);
 
 module.exports = router;
