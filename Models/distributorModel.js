@@ -3,26 +3,23 @@ const mongoose = require("mongoose");
 
 var userSchema = new mongoose.Schema(
   {
+    image: {
+      type: String,
+    },
     name: {
       type: String,
-      required: true,
     },
     email: {
       type: String,
-      required: true,
-      // unique: true,
     },
     city: {
       type: String,
     },
     mobile: {
       type: String,
-      required: true,
-      // unique: true, 
     },
     password: {
       type: String,
-      required: true,
     },
     otp: {
       type: String,
@@ -36,6 +33,21 @@ var userSchema = new mongoose.Schema(
       type: String,
     },
     pincode: {
+      type: String,
+    },
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Trans", "Other"]
+    },
+    gstin: {
+      type: String,
+    },
+    network: {
+      type: String,
+      enum: ["My Kutumbhakam 1",
+        "My Kutumbhakam 2"]
+    },
+    dateOfBirth: {
       type: String,
     },
     sales: {

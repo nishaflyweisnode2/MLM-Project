@@ -4,6 +4,7 @@ const Cart = require("../Models/CartModel");
 const Product = require("../Models/productModel");
 const Wallet = require("../Models/WalletModel")
 const uniqid = require("uniqid");
+const Notification = require('../Models/notificationModel');
 
 const validateMongoDbId = require("../utils/validateMongodbId");
 
@@ -122,7 +123,6 @@ const createOrder = async (req, res) => {
 
     newOrder.save();
 
-    // Update product quantities and sold count
     let update = userCart.products.map((item) => {
       return {
         updateOne: {
@@ -138,6 +138,13 @@ const createOrder = async (req, res) => {
       message: "Order successfully",
       data: newOrder,
     });
+    const orderNotificationMessage = `Thank you for your order! Your order with ID ${newOrder._id} has been placed successfully.`;
+    const orderNotification = new Notification({
+      recipient: user._id,
+      content: orderNotificationMessage,
+      type: 'order',
+    });
+    await orderNotification.save();
   } catch (error) {
     res.json({
       status: 500,
@@ -145,6 +152,136 @@ const createOrder = async (req, res) => {
     });
   }
 };
+
+const createOrder1 = async (req, res) => {
+  const { COD, couponApplied, orderStatus } = req.body;
+  const { _id } = req.user;
+  validateMongoDbId(_id);
+
+  try {
+    if (!COD) {
+      throw new Error("Create cash order failed");
+    }
+
+    const user = await User.findById(_id);
+    const userCart = await Cart.findOne({ orderby: user._id });
+
+    let finalAmount = userCart.totalAfterDiscount || userCart.cartTotal;
+
+    // Calculate GST amount (18%)
+    const gstPercentage = 18;
+    const gstAmount = (finalAmount * gstPercentage) / 100;
+
+    // Deduct GST from the final amount
+    const lessGstfinalAmount = finalAmount - gstAmount;
+
+    // Calculate cost price (75% of the amount)
+    const costPricePercentage = 75;
+    const costPriceAmount = (lessGstfinalAmount * costPricePercentage) / 100;
+
+    // Calculate the distributor's earnings
+    const distributorEarnings = calculateDistributorEarnings(user, lessGstfinalAmount);
+
+    // Create the order
+    const newOrder = await saveOrder(user, userCart, orderStatus, distributorEarnings);
+
+    // Deduct sold quantities from product inventory
+    await deductSoldQuantities(userCart.products);
+
+    // Update user's wallet and sales
+    user.wallet += distributorEarnings;
+    user.sales += finalAmount;
+    await user.save();
+
+    // Notify the user about the order
+    notifyUserAboutOrder(user, newOrder);
+
+    res.status(200).json({
+      message: "Order successfully",
+      data: newOrder,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+// Calculate distributor's earnings based on their level
+async function calculateDistributorEarnings(user, orderAmount) {
+  let balanceToDistribute = (orderAmount * 16.40) / 100;
+
+  if (user.parentId) {
+    const parent = await User.findById(user.parentId);
+    if (parent) {
+      const distributorEarnings = distributeEarningsBasedOnLevel(user.level, balanceToDistribute);
+      updateUserWallet(parent, distributorEarnings);
+      return distributorEarnings;
+    }
+  }
+
+  return 0;
+}
+
+// Distribute earnings based on distributor's level
+function distributeEarningsBasedOnLevel(level, balanceToDistribute) {
+  const levelWisePercentage = [35, 20, 10, 8, 7, 6, 5, 4, 3, 2];
+  const percentage = levelWisePercentage[level - 1] / 100;
+  return balanceToDistribute * percentage;
+}
+
+// Update the user's wallet
+function updateUserWallet(user, amount) {
+  if (user.wallet) {
+    user.wallet += amount;
+  } else {
+    user.wallet = amount;
+  }
+}
+
+// Save the order
+async function saveOrder(user, userCart, orderStatus, distributorAmount) {
+  const newOrder = new Order({
+    products: userCart.products,
+    paymentIntent: {
+      id: uniqid(),
+      method: "COD",
+      amount: userCart.cartTotal,
+      status: orderStatus,
+      created: Date.now(),
+      currency: "usd",
+    },
+    orderby: user._id,
+    orderStatus: orderStatus,
+    distributorAmount: distributorAmount,
+  });
+
+  return await newOrder.save();
+}
+
+// Deduct sold quantities from product inventory
+async function deductSoldQuantities(products) {
+  const updates = products.map((item) => ({
+    updateOne: {
+      filter: { _id: item.product._id },
+      update: { $inc: { quantity: -item.count, sold: +item.count },
+    },
+}}));
+
+  return await Product.bulkWrite(updates, {});
+}
+
+// Notify the user about the order
+function notifyUserAboutOrder(user, order) {
+  const orderNotificationMessage = `Thank you for your order! Your order with ID ${order._id} has been placed successfully.`;
+  const orderNotification = new Notification({
+    recipient: user._id,
+    content: orderNotificationMessage,
+    type: 'order',
+  });
+
+  orderNotification.save();
+}
 
 
 module.exports = {

@@ -19,6 +19,10 @@ var cartSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    address: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Address",
+    },
   },
   {
     timestamps: true,

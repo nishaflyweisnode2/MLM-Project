@@ -6,6 +6,12 @@ const bcrypt = require("bcryptjs");
 const validateMongoDbId = require("../utils/validateMongodbId");
 const Coupon = require("../Models/CouponModel");
 const Wallet = require("../Models/WalletModel");
+const Notification = require('../Models/notificationModel');
+const moment = require('moment');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+
+
 
 const createUser = async (req, res) => {
   const { name, email, mobile, password, address, pincode, city } = req.body;
@@ -52,6 +58,15 @@ const createUser = async (req, res) => {
         user: newUser._id,
       });
       await newWallet.save();
+
+      const welcomeMessage = `Welcome, ${newUser.name}! Thank you for registering.`;
+      const welcomeNotification = new Notification({
+        recipient: newUser._id,
+        content: welcomeMessage,
+        type: 'welcome',
+      });
+      await welcomeNotification.save();
+
 
       res.status(201).json({
         message: "Registration susscessfully",
@@ -167,10 +182,41 @@ const UpdateUser = async (req, res) => {
   // const { id } = req.params;
   const id = req.user._id
   validateMongoDbId(id)
-  const { name, email, mobile, password, address, pincode, city } = req.body;
+  const errors = [];
+  const { name, email, mobile, address, gender, pincode, city, gstin } = req.body;
   try {
     const UpdateUser = await User.findByIdAndUpdate(id, {
-      name, email, mobile, password, address, pincode, city
+      name, email, mobile, address, gender, pincode, city, gstin
+    }, { new: true });
+    res.json({
+      status: 200,
+      message: "Distributor updated successfully",
+      data: UpdateUser,
+    });
+  } catch (error) {
+    res.json({ status: 500, message: error.message });
+  }
+};
+
+const UploadUserProfile = async (req, res) => {
+  // const { id } = req.params;
+  const id = req.user._id
+  validateMongoDbId(id)
+  const errors = [];
+  const { name, mobile, password, } = req.body;
+  try {
+
+    if (!req.file) {
+      return res.status(400).json({ status: 400, error: "Image file is required" });
+    }
+    if (!password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.{8,})/)) {
+      errors.push("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const UpdateUser = await User.findByIdAndUpdate(id, {
+      name, mobile, password: hashedPassword, image: req.file.path,
     }, { new: true });
     res.json({
       status: 200,
@@ -243,9 +289,10 @@ const deleteaUser = async (req, res) => {
 // };
 
 const UserCart = async (req, res) => {
-  const { cart } = req.body;
-  const { _id } = req.user;
+  const { cart, addressId } = req.body;
+
   try {
+    const { _id } = req.user;
     const user = await User.findById(_id);
     const alreadyExistCart = await Cart.findOne({ orderby: user._id });
 
@@ -285,6 +332,7 @@ const UserCart = async (req, res) => {
       products: products,
       cartTotal: cartTotal,
       orderby: user._id,
+      address: addressId, // Assign the provided address ID
     });
 
     await newCart.save();
@@ -309,8 +357,12 @@ const getUserCart = async (req, res) => {
   validateMongoDbId(_id);
   try {
     const cart = await Cart.findOne({ orderby: _id }).populate(
-      "products.product" /*  "_id title price totalAfterDiscount" */
-    );
+      "products.product")
+      .populate("address" /*  "_id title price totalAfterDiscount" */
+      );
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
     res.json({
       status: 200,
       message: "User Cart fetched successfully",
@@ -330,6 +382,9 @@ const emptyCart = async (req, res) => {
   try {
     const user = await User.findOne({ _id });
     const cart = await Cart.findOneAndRemove({ orderby: user._id });
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
     res.json({
       status: 200,
       message: "Empty Cart fetched successfully",
@@ -356,8 +411,8 @@ const addTeammateDistributor = async (req, res) => {
     if (!distributor.active) {
       return res.status(400).json({ success: false, message: "Only active distributors can add teammates." });
     }
-
-    if (typeof distributor.teamMembers === 'undefined') {
+    console.log(distributor.teamMembers)
+    if (!distributor.teamMembers) {
       distributor.teamMembers = [];
     }
 
@@ -370,7 +425,6 @@ const addTeammateDistributor = async (req, res) => {
     if (!teammateDistributor) {
       return res.status(404).json({ success: false, message: "Teammate distributor not found." });
     }
-
 
     if (teammateDistributor.parentId) {
       return res.status(400).json({ success: false, message: "Teammate distributor already has a parent." });
@@ -472,6 +526,11 @@ const getTeamMembersCount = async (req, res) => {
 const AddTeamMemberByDistributor = async (req, res) => {
   try {
     const distributorId = req.params.id;
+    let uniqueId;
+    do {
+      uniqueId = Math.floor(Math.random() * 10000000000);
+    } while (await User.findOne({ uniqueId }));
+
     const subDistributorData = {
       name: req.body.name,
       email: req.body.email,
@@ -480,6 +539,8 @@ const AddTeamMemberByDistributor = async (req, res) => {
       address: req.body.address,
       pincode: req.body.pincode,
       city: req.body.city,
+      dateOfBirth: req.body.dateOfBirth,
+      uniqueId: uniqueId,
     };
     const distributor = await User.findById(distributorId);
 
@@ -863,12 +924,77 @@ const kutumbhAvailable = async (req, res) => {
   }
 };
 
+
+const generateIDCard = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    console.log(userId);
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.log(user.dateOfBirth);
+    const birthdate = moment(user.dateOfBirth).format('YYYY-MM-DD');
+    const joiningDate = moment(user.createdAt).format('YYYY-MM-DD');
+
+    const idCard = {
+      distributorId: user.uniqueId,
+      mobileNumber: user.mobile,
+      dateOfBirth: birthdate,
+      email: user.email,
+      joiningDate,
+    };
+
+    res.status(200).json({ message: 'ID card generated successfully', data: idCard });
+  } catch (error) {
+    res.status(500).json({ message: 'Error generating ID card', error: error.message });
+  }
+};
+
+
+const generateIDCard1 = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const userData = await User(userId);
+
+    const birthdate = moment(userData.dateOfBirth).format('YYYY-MM-DD');
+    const joiningDate = moment(userData.createdAt).format('YYYY-MM-DD');
+
+    const doc = new PDFDocument();
+    const stream = doc.pipe(fs.createWriteStream('user_id_card.pdf'));
+
+    doc.fontSize(18);
+    doc.text('User ID Card', { align: 'center' });
+
+    doc.fontSize(14);
+    doc.text(`DistributorId: ${userData.uniqueId}`);
+    doc.text(`BirthDate: ${userData.birthdate}`);
+    doc.text(`JoiningDate: ${userData.joiningDate}`);
+    doc.text(`Name: ${userData.name}`);
+    doc.text(`Email: ${userData.email}`);
+    doc.text(`Mobile: ${userData.mobile}`);
+    doc.text(`Address: ${userData.address}`);
+    doc.end();
+
+    stream.on('finish', () => {
+      res.download('user_id_card.pdf');
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error generating ID card' });
+  }
+};
+
+
 module.exports = {
   createUser,
   loginUser,
   getallUser,
   getaUser,
   UpdateUser,
+  UploadUserProfile,
   deleteaUser,
   UserCart,
   getUserCart,
@@ -889,7 +1015,8 @@ module.exports = {
   distributorKutumbh,
   kutumbhMembers,
   kutumbhAvailable,
-  kutumbhTree
+  kutumbhTree,
+  generateIDCard
 }
 
 

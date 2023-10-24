@@ -1,11 +1,12 @@
 const Chat = require('../Models/chatModel');
 
-
 const createChat = async (req, res) => {
     try {
-        const { participants } = req.body;
+        const userId = req.user.id;
+        const { receiverId } = req.body;
 
-        const chat = new Chat({ participants });
+
+        const chat = new Chat({ senderId: userId, receiverId, messages: [] });
         await chat.save();
 
         res.status(201).json({ message: 'Chat created successfully', data: chat });
@@ -14,10 +15,11 @@ const createChat = async (req, res) => {
     }
 };
 
-
 const sendMessage = async (req, res) => {
     try {
-        const { sender, content } = req.body;
+        const userId = req.user.id;
+
+        const { receiverId, message } = req.body;
         const chatId = req.params.chatId;
 
         const chat = await Chat.findById(chatId);
@@ -26,7 +28,7 @@ const sendMessage = async (req, res) => {
             return res.status(404).json({ message: 'Chat not found' });
         }
 
-        chat.messages.push({ sender, content });
+        chat.messages.push({ senderId: userId, receiverId, message });
         await chat.save();
 
         res.status(200).json({ message: 'Message sent successfully', data: chat });
@@ -34,8 +36,6 @@ const sendMessage = async (req, res) => {
         res.status(500).json({ message: 'Error sending message', error: error.message });
     }
 };
-
-
 
 const getChatMessages = async (req, res) => {
     try {
@@ -52,8 +52,6 @@ const getChatMessages = async (req, res) => {
         res.status(500).json({ message: 'Error retrieving chat messages', error: error.message });
     }
 };
-
-
 
 module.exports = {
     createChat,

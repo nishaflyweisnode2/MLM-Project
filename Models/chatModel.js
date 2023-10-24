@@ -1,30 +1,34 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
+const oneToOneChat = mongoose.Schema({
 
-const messageSchema = new mongoose.Schema({
-  sender: {
+  senderId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+    ref: 'user'
   },
-  content: {
-    type: String,
-    required: true,
+  receiverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'user'
   },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-const chatSchema = new mongoose.Schema({
-  participants: [
+  messages: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+      receiverId: {
+        type: String
+      },
+      senderId: {
+        type: String
+      },
+      message: {
+        type: String
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now()
+      }
+    }
   ],
-  messages: [messageSchema],
-});
 
-module.exports = mongoose.model('Chat', chatSchema);
+
+}, { timestamps: true })
+
+
+module.exports = mongoose.model("Chat", oneToOneChat);

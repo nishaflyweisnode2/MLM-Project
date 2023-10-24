@@ -16,5 +16,7 @@ router.use("/privacyPolicy", require("./privacyPolicyRoute"));
 router.use("/aboutus", require("./aboutusRoute"));
 router.use("/termCondition", require("./term&conditionRoute"));
 router.use("/chat", require("./chatroute"));
+router.use("/notification", require("./notificationRoute"));
+router.use("/address", require("./addressRoute"));
 
 module.exports = router;

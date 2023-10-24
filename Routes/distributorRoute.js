@@ -6,6 +6,7 @@ const {
   getaUser,
   deleteaUser,
   UpdateUser,
+  UploadUserProfile,
   UserCart,
   getUserCart,
   emptyCart,
@@ -26,10 +27,14 @@ const {
   kutumbhMembers,
   kutumbhAvailable,
   kutumbhTree,
+  generateIDCard,
 
 } = require("../Controller/distributorCtrl");
 const { isAuthenticatedUser } = require("../Middleware/auth");
 const router = express.Router();
+
+const upload = require("../Middleware/upload");
+
 
 router.post("/register", createUser);
 router.post("/login", loginUser);
@@ -40,6 +45,7 @@ router.get("/resend/otp/:id", resendOtp);
 router.get("/all-users", getallUser);
 router.get("/:id", isAuthenticatedUser, getaUser);
 router.put("/update", isAuthenticatedUser, UpdateUser);
+router.put("/updateProfilePic", isAuthenticatedUser, upload.single("image"), UploadUserProfile);
 router.delete("/:id", isAuthenticatedUser, deleteaUser);
 router.post("/cart", isAuthenticatedUser, UserCart);
 router.get("/getcart/user", isAuthenticatedUser, getUserCart);
@@ -57,5 +63,7 @@ router.get("/distributor/kutumbh/count", isAuthenticatedUser, distributorKutumbh
 router.get("/kutumbh-members/:distributorId", isAuthenticatedUser, kutumbhMembers)
 router.get("/available-kutumbhs/:distributorId", isAuthenticatedUser, kutumbhAvailable)
 router.get("/tree-height-depth/:distributorId", isAuthenticatedUser, kutumbhTree)
+router.get('/user/idcard/:userId', isAuthenticatedUser, generateIDCard);
+
 
 module.exports = router;
