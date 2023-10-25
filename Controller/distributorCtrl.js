@@ -988,6 +988,84 @@ const generateIDCard1 = async (req, res) => {
 };
 
 
+const searchProducts = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    const productsCount = await Product.count();
+    if (search) {
+      let data1 = [
+        {
+          $lookup: { from: "pcategories", localField: "category", foreignField: "_id", as: "category" },
+        },
+        { $unwind: "$category" },
+        {
+          $match: {
+            $or: [
+              { "category.title": { $regex: search, $options: "i" }, },
+              { "title": { $regex: search, $options: "i" }, },
+              { "slug": { $regex: search, $options: "i" }, },
+              { "tags": { $regex: search, $options: "i" }, },
+              { "brand": { $regex: search, $options: "i" }, },
+              { "description": { $regex: search, $options: "i" }, },
+            ]
+          }
+        },
+        { $sort: { totalRating: -1 } }
+      ]
+      let apiFeature = await Product.aggregate(data1);
+      return res.status(200).json({ status: 200, message: "Product data found.", data: apiFeature, count: productsCount });
+    } else {
+      let apiFeature = await Product.aggregate([
+        { $lookup: { from: "pcategories", localField: "category", foreignField: "_id", as: "category" } },
+        { $unwind: "$category" },
+        { $sort: { totalRating: -1 } }
+      ]);
+
+      return res.status(200).json({ status: 200, message: "Product data found.", data: apiFeature, count: productsCount });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: 500, message: 'Error searching products', error: error.message });
+  }
+};
+
+
+const getTotalMembersInKutumb = async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const totalMembers = user.Kutumbh.length;
+
+    return res.status(200).json({ status: 200, data: totalMembers });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+const getTotalActiveMembers = async (req, res) => {
+  try {
+    const totalActiveMembers = await User.countDocuments({ active: true });
+
+    return res.status(200).json({ status: 200, data: totalActiveMembers });
+  } catch (error) {
+    return res.status(500).json({ error: 'An error occurred' });
+  }
+};
+
+
+
+
+
+
+
 module.exports = {
   createUser,
   loginUser,
@@ -1016,7 +1094,10 @@ module.exports = {
   kutumbhMembers,
   kutumbhAvailable,
   kutumbhTree,
-  generateIDCard
+  generateIDCard,
+  searchProducts,
+  getTotalMembersInKutumb,
+  getTotalActiveMembers
 }
 
 

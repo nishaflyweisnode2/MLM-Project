@@ -1,10 +1,14 @@
 const express = require("express");
 const { isAuthenticatedUser } = require("../Middleware/auth");
-const { createOrder, getOrder, /* PurchaseProductByDistributor */ } = require("../Controller/orderCtrl");
+const { createOrder, getOrder, getOrderStatus, getTotalRevenue /* PurchaseProductByDistributor */ } = require("../Controller/orderCtrl");
 const router = express.Router();
 
 router.post("/cash-order", isAuthenticatedUser, createOrder);
 router.get("/get", isAuthenticatedUser, getOrder);
+router.get('/track-order/:orderNumber', isAuthenticatedUser, getOrderStatus);
+router.get('/totalRevenue', isAuthenticatedUser, getTotalRevenue);
+
+
 // router.post("/purchase", isAuthenticatedUser, PurchaseProductByDistributor);
 // router.post("/login", loginUser);
 // router.get("/all-users", getallUser);

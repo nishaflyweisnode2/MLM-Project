@@ -12,20 +12,26 @@ const getOrder = async (req, res) => {
   const { _id } = req.user;
   validateMongoDbId(_id);
   try {
-    const userOrders = await Order.findOne({ orderby: _id }).populate(
+    const userOrders = await Order.find({ orderby: _id }).sort({ createdAt: -1 }).populate(
       "products.product"
-    ).exec();
+    ).populate("address").exec();
     res.json({
       status: 200,
-      message: "Get Order Successfully",
-      data: userOrders
+      message: "Get Orders Successfully",
+      data: userOrders,
     });
-  } catch (error) { }
+  } catch (error) {
+    res.status(500).json({
+      status: 500,
+      message: error.message,
+    });
+  }
 };
+
 
 const createOrder = async (req, res) => {
   const { COD, couponApplied, orderStatus } = req.body;
-   const { _id } = req.user;
+  const { _id } = req.user;
   validateMongoDbId(_id);
 
   try {
@@ -42,48 +48,42 @@ const createOrder = async (req, res) => {
     }
     console.log(`final Amount = ${finalAmount}`);
 
-    // Calculate GST amount
+
     const gstPercentage = 18;
     const gstAmount = (finalAmount * gstPercentage) / 100;
-    lessGstfinalAmount = (finalAmount-gstAmount);
-    console.log(`GST final Amount = ${lessGstfinalAmount}`)//5000 - 4100 = 900
+    lessGstfinalAmount = (finalAmount - gstAmount);
+    console.log(`GST final Amount = ${lessGstfinalAmount}`)
 
-    // cost price (75% of the amount)
-    const costPricePercentage = 75; 
+    const costPricePercentage = 75;
     const costPriceAmount = (lessGstfinalAmount * costPricePercentage) / 100;
     console.log(`cost price amount ${costPriceAmount}`) //3075
-   
-    // Calculate distributor's amount (over all margin 20.5%)
+
     const OverAllMarginPercentage = 20.5;
     const OverAllMarginAmount = (finalAmount * OverAllMarginPercentage) / 100;
     console.log(`Over all Margin Amount = ${OverAllMarginAmount}`)
 
 
-    // Calculate company's margin amount (4.10%)
     const companyMarginPercentage = 4.10;
     const companyMarginAmount = (finalAmount * companyMarginPercentage) / 100;
     console.log(`company margin = ${companyMarginAmount}`)
 
-    // Balance to distribute (16.40%)
     const balanceToDistributePercentage = 16.40;
     let balanceToDistribute = (finalAmount * balanceToDistributePercentage) / 100;
     console.log(`balance To Distribute Amount = ${balanceToDistribute}`)
 
 
-    // Get the distributor's level
     const distributorLevel = user.level;
 
-    // Distributor's amount based on their level
     if (distributorLevel <= 10) {
-      // Define the level-wise percentages and calculate the amount
       const levelWisePercentage = [35, 20, 10, 8, 7, 6, 5, 4, 3, 2];
       balanceToDistribute *= levelWisePercentage[distributorLevel - 1] / 100;
       console.log(`levelWisePercentage = ${levelWisePercentage[distributorLevel - 1] / 100}`)
     }
-    // console.log(`distributor Amount = ${distributorAmount}`)
+
+    const distributorAmount = balanceToDistribute;
+
 
     if (user.parentId) {
-      // Fetch the parent's wallet and add the distributor's amount to it
       const parent = await User.findById(user.parentId);
       console.log(`parent = ${parent.name}`);
       if (parent) {
@@ -101,10 +101,11 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // Save the updated user data to the database
     user.wallet += distributorAmount;
     user.sales += finalAmount;
     await user.save();
+
+    const address = userCart.address;
 
     let newOrder = await new Order({
       products: userCart.products,
@@ -119,6 +120,7 @@ const createOrder = async (req, res) => {
       orderby: user._id,
       orderStatus: orderStatus,
       distributorAmount: distributorAmount,
+      address: address,
     });
 
     newOrder.save();
@@ -153,140 +155,57 @@ const createOrder = async (req, res) => {
   }
 };
 
-const createOrder1 = async (req, res) => {
-  const { COD, couponApplied, orderStatus } = req.body;
-  const { _id } = req.user;
-  validateMongoDbId(_id);
 
+const getOrderStatus = async (req, res) => {
   try {
-    if (!COD) {
-      throw new Error("Create cash order failed");
+    const { orderNumber } = req.params;
+
+    const order = await Order.findOne({ _id: orderNumber }).populate(
+      "products.product"
+    ).populate('address');
+
+    if (!order) {
+      return res.status(404).json({ status: 404, message: 'Order not found' });
     }
 
-    const user = await User.findById(_id);
-    const userCart = await Cart.findOne({ orderby: user._id });
-
-    let finalAmount = userCart.totalAfterDiscount || userCart.cartTotal;
-
-    // Calculate GST amount (18%)
-    const gstPercentage = 18;
-    const gstAmount = (finalAmount * gstPercentage) / 100;
-
-    // Deduct GST from the final amount
-    const lessGstfinalAmount = finalAmount - gstAmount;
-
-    // Calculate cost price (75% of the amount)
-    const costPricePercentage = 75;
-    const costPriceAmount = (lessGstfinalAmount * costPricePercentage) / 100;
-
-    // Calculate the distributor's earnings
-    const distributorEarnings = calculateDistributorEarnings(user, lessGstfinalAmount);
-
-    // Create the order
-    const newOrder = await saveOrder(user, userCart, orderStatus, distributorEarnings);
-
-    // Deduct sold quantities from product inventory
-    await deductSoldQuantities(userCart.products);
-
-    // Update user's wallet and sales
-    user.wallet += distributorEarnings;
-    user.sales += finalAmount;
-    await user.save();
-
-    // Notify the user about the order
-    notifyUserAboutOrder(user, newOrder);
-
     res.status(200).json({
-      message: "Order successfully",
-      data: newOrder,
+      status: 200,
+      message: 'Order status retrieved successfully',
+      data: {
+        order
+      },
     });
   } catch (error) {
     res.status(500).json({
+      status: 500,
       message: error.message,
     });
   }
 };
 
-// Calculate distributor's earnings based on their level
-async function calculateDistributorEarnings(user, orderAmount) {
-  let balanceToDistribute = (orderAmount * 16.40) / 100;
 
-  if (user.parentId) {
-    const parent = await User.findById(user.parentId);
-    if (parent) {
-      const distributorEarnings = distributeEarningsBasedOnLevel(user.level, balanceToDistribute);
-      updateUserWallet(parent, distributorEarnings);
-      return distributorEarnings;
+const getTotalRevenue = async (req, res) => {
+  try {
+    const orders = await Order.find();
+
+    let totalRevenue = 0;
+    for (const order of orders) {
+      // You need to consider how you calculate revenue based on your data model
+      // For example, if the order has a `totalAmount` field, you can use that
+      totalRevenue += order.paymentIntent.amount;
     }
+
+    return res.status(200).json({ totalRevenue });
+  } catch (error) {
+    return res.status(500).json({ error: 'An error occurred' });
   }
-
-  return 0;
-}
-
-// Distribute earnings based on distributor's level
-function distributeEarningsBasedOnLevel(level, balanceToDistribute) {
-  const levelWisePercentage = [35, 20, 10, 8, 7, 6, 5, 4, 3, 2];
-  const percentage = levelWisePercentage[level - 1] / 100;
-  return balanceToDistribute * percentage;
-}
-
-// Update the user's wallet
-function updateUserWallet(user, amount) {
-  if (user.wallet) {
-    user.wallet += amount;
-  } else {
-    user.wallet = amount;
-  }
-}
-
-// Save the order
-async function saveOrder(user, userCart, orderStatus, distributorAmount) {
-  const newOrder = new Order({
-    products: userCart.products,
-    paymentIntent: {
-      id: uniqid(),
-      method: "COD",
-      amount: userCart.cartTotal,
-      status: orderStatus,
-      created: Date.now(),
-      currency: "usd",
-    },
-    orderby: user._id,
-    orderStatus: orderStatus,
-    distributorAmount: distributorAmount,
-  });
-
-  return await newOrder.save();
-}
-
-// Deduct sold quantities from product inventory
-async function deductSoldQuantities(products) {
-  const updates = products.map((item) => ({
-    updateOne: {
-      filter: { _id: item.product._id },
-      update: { $inc: { quantity: -item.count, sold: +item.count },
-    },
-}}));
-
-  return await Product.bulkWrite(updates, {});
-}
-
-// Notify the user about the order
-function notifyUserAboutOrder(user, order) {
-  const orderNotificationMessage = `Thank you for your order! Your order with ID ${order._id} has been placed successfully.`;
-  const orderNotification = new Notification({
-    recipient: user._id,
-    content: orderNotificationMessage,
-    type: 'order',
-  });
-
-  orderNotification.save();
-}
-
+};
 
 module.exports = {
   createOrder,
   getOrder,
+  getOrderStatus,
+  getTotalRevenue
 };
 
 

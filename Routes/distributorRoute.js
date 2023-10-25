@@ -28,6 +28,9 @@ const {
   kutumbhAvailable,
   kutumbhTree,
   generateIDCard,
+  searchProducts,
+  getTotalMembersInKutumb,
+  getTotalActiveMembers
 
 } = require("../Controller/distributorCtrl");
 const { isAuthenticatedUser } = require("../Middleware/auth");
@@ -64,6 +67,11 @@ router.get("/kutumbh-members/:distributorId", isAuthenticatedUser, kutumbhMember
 router.get("/available-kutumbhs/:distributorId", isAuthenticatedUser, kutumbhAvailable)
 router.get("/tree-height-depth/:distributorId", isAuthenticatedUser, kutumbhTree)
 router.get('/user/idcard/:userId', isAuthenticatedUser, generateIDCard);
+router.get('/search-products/get', isAuthenticatedUser, searchProducts);
+router.get('/total-members-in-kutumb/:userId', isAuthenticatedUser, getTotalMembersInKutumb);
+router.get('/totalActiveMembers/get', isAuthenticatedUser, getTotalActiveMembers);
+
+
 
 
 module.exports = router;
