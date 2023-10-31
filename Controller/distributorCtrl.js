@@ -288,7 +288,7 @@ const deleteaUser = async (req, res) => {
 //   }
 // };
 
-const UserCart = async (req, res) => {
+const UserCart1 = async (req, res) => {
   const { cart, addressId } = req.body;
 
   try {
@@ -349,6 +349,94 @@ const UserCart = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+
+const UserCart = async (req, res) => {
+  const { cart, addressId } = req.body;
+
+  try {
+    const { _id } = req.user;
+    const user = await User.findById(_id);
+    const alreadyExistCart = await Cart.findOne({ orderby: user._id });
+
+    if (alreadyExistCart) {
+      // Cart already exists, update it with new products
+      const updatedProducts = [];
+
+      for (let i = 0; i < cart.length; i++) {
+        const productId = cart[i]._id;
+        const existingProduct = alreadyExistCart.products.find(
+          (p) => p.product.toString() === productId.toString()
+        );
+
+        if (existingProduct) {
+          // Product already exists in the cart, update the count
+          existingProduct.count += cart[i].count;
+        } else {
+          // Product doesn't exist in the cart, add it
+          const getPrice = await Product.findById(productId).select("price").exec();
+          const newProduct = {
+            product: productId,
+            count: cart[i].count,
+            color: cart[i].color,
+            price: getPrice.price,
+          };
+          updatedProducts.push(newProduct);
+        }
+      }
+
+      // Update the existing cart with new products
+      alreadyExistCart.products = [...alreadyExistCart.products, ...updatedProducts];
+      // Recalculate the cartTotal
+      alreadyExistCart.cartTotal = calculateCartTotal(alreadyExistCart.products);
+
+      // Save the updated cart
+      await alreadyExistCart.save();
+
+      return res.status(200).json({ status: 200, message: "Cart updated successfully", data: alreadyExistCart });
+    } else {
+      // Cart doesn't exist, create a new one
+      let products = [];
+      let cartTotal = 0;
+
+      for (let i = 0; i < cart.length; i++) {
+        const productId = cart[i]._id;
+        const getPrice = await Product.findById(productId).select("price").exec();
+        const newProduct = {
+          product: productId,
+          count: cart[i].count,
+          color: cart[i].color,
+          price: getPrice.price,
+        };
+        products.push(newProduct);
+        cartTotal += newProduct.price * newProduct.count;
+      }
+
+      const newCart = new Cart({
+        products: products,
+        cartTotal: cartTotal,
+        orderby: user._id,
+        address: addressId,
+      });
+
+      await newCart.save();
+
+      return res.status(201).json({ status: 201, message: "Product cart successfully created", data: newCart });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: 500,
+      message: error.message,
+    });
+  }
+};
+
+const calculateCartTotal = (cartProducts) => {
+  return cartProducts.reduce((total, item) => {
+    return total + item.price * item.count;
+  }, 0);
 };
 
 
@@ -449,29 +537,48 @@ const addTeammateDistributor = async (req, res) => {
   }
 };
 
+
 const applyCoupon = async (req, res) => {
-  const { coupon } = req.body;
-  const { _id } = req.user;
-  const validCoupon = await Coupon.findOne({ name: coupon });
-  console.log(validCoupon);
-  if (validCoupon === null) {
-    return res.json("Invalid coupon");
+  try {
+    const { coupon } = req.body;
+    const { _id } = req.user;
+
+    const validCoupon = await Coupon.findOne({ name: coupon });
+
+    if (!validCoupon) {
+      return res.status(400).json({ error: "Invalid coupon" });
+    }
+
+    const user = await User.findOne({ _id });
+    const cart = await Cart.findOne({ orderby: user._id }).populate("products.product");
+
+    if (!cart) {
+      return res.status(404).json({ error: "Cart not found" });
+    }
+
+    const cartTotal = cart.products.reduce((total, item) => {
+      return total + item.product.price * item.count; 
+    }, 0);
+
+    const totalAfterDiscount = (cartTotal - (cartTotal * validCoupon.discount) / 100).toFixed(2);
+
+    if (isNaN(totalAfterDiscount)) {
+      return res.status(400).json({ error: "Invalid coupon or cart total" });
+    }
+
+    const updatedCart = await Cart.findOneAndUpdate(
+      { orderby: user._id },
+      { totalAfterDiscount },
+      { new: true }
+    );
+
+    return res.status(200).json({ totalAfterDiscount: updatedCart.totalAfterDiscount });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal server error" });
   }
-  const user = await User.findOne({ _id });
-  let { cartTotal } = await Cart.findOne({
-    orderby: user._id,
-  }).populate("products.product");
-  let totalAfterDiscount = (
-    cartTotal -
-    (cartTotal * validCoupon.discount) / 100
-  ).toFixed(2);
-  await Cart.findOneAndUpdate(
-    { orderby: user._id },
-    { totalAfterDiscount },
-    { new: true }
-  );
-  res.json({ totalAfterDiscount })
 };
+
 
 const getTeamMembers = async (req, res) => {
   const { parentId } = req.params;

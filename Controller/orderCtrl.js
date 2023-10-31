@@ -125,6 +125,9 @@ const createOrder = async (req, res) => {
 
     newOrder.save();
 
+    await Cart.findOneAndUpdate({ orderby: user._id }, { $set: { products: [] } });
+
+
     let update = userCart.products.map((item) => {
       return {
         updateOne: {
@@ -148,6 +151,7 @@ const createOrder = async (req, res) => {
     });
     await orderNotification.save();
   } catch (error) {
+    console.log(error);
     res.json({
       status: 500,
       message: error.message,
