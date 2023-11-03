@@ -9,6 +9,7 @@ const Wallet = require("../Models/WalletModel");
 const Notification = require('../Models/notificationModel');
 const moment = require('moment');
 const PDFDocument = require('pdfkit');
+const jwt = require('jsonwebtoken');
 const fs = require('fs');
 
 
@@ -67,12 +68,14 @@ const createUser = async (req, res) => {
       });
       await welcomeNotification.save();
 
+      const token = jwt.sign({ _id: newUser._id }, 'mlmunilevelbyflyweis');
 
       res.status(201).json({
         message: "Registration susscessfully",
         status: 200,
         data: newUser,
-        otp: otp
+        otp: otp,
+        token: token
       })
     } else {
       throw new Error("Distrubutor Already Exists");
@@ -557,7 +560,7 @@ const applyCoupon = async (req, res) => {
     }
 
     const cartTotal = cart.products.reduce((total, item) => {
-      return total + item.product.price * item.count; 
+      return total + item.product.price * item.count;
     }, 0);
 
     const totalAfterDiscount = (cartTotal - (cartTotal * validCoupon.discount) / 100).toFixed(2);
