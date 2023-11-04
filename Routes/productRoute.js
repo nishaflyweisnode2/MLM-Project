@@ -3,6 +3,7 @@ const {
   createProduct,
   getaProduct,
   getAllProduct,
+  getProductByCategory,
   updateProduct,
   deleteProduct,
   addToWishlist,
@@ -23,6 +24,7 @@ const upload = require("../Middleware/upload");
 
 router.post("/", isAuthenticatedUser, upload.array("image"), createProduct);
 router.get("/:id", isAuthenticatedUser, getaProduct);
+router.get("/products/by-category/:categoryId", getProductByCategory);
 router.get("/", isAuthenticatedUser, getAllProduct);
 router.put("/:id", isAuthenticatedUser, upload.array("image"), updateProduct);
 router.delete("/:id", isAuthenticatedUser, deleteProduct);

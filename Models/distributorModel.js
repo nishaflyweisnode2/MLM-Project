@@ -84,7 +84,21 @@ var userSchema = new mongoose.Schema(
     },
     Kutumbh: [{
       type: mongoose.Schema.Types.ObjectId, ref: 'subDistributor'
-    }]
+    }],
+    bankDetails: {
+      bankName: {
+        type: String,
+      },
+      accountNumber: {
+        type: String,
+      },
+      ifscCode: {
+        type: String,
+      },
+      location: {
+        type: String,
+      },
+    },
   },
   {
     timestamps: true,

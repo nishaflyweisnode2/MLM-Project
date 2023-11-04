@@ -1,6 +1,7 @@
 const Product = require("../Models/productModel");
 const slugify = require("slugify");
 const User = require("../Models/distributorModel")
+const Category = require("../Models/productCategoryModel");
 
 
 const createProduct = async (req, res) => {
@@ -50,6 +51,30 @@ const getaProduct = async (req, res) => {
       status: 200,
       message: "Product found successfully",
       data: findProduct
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 500,
+      message: error.message
+    });
+  }
+};
+
+const getProductByCategory = async (req, res) => {
+  const { categoryId } = req.params;
+  try {
+
+    const category = await Category.find({ _id: categoryId });
+    if (!category) {
+      return res.status(404).json({ message: "not found" });
+    }
+
+    const products = await Product.find({ category: categoryId });
+
+    res.json({
+      status: 200,
+      message: "Products found successfully",
+      data: products
     });
   } catch (error) {
     res.status(500).json({
@@ -454,6 +479,7 @@ module.exports = {
   createProduct,
   getaProduct,
   getAllProduct,
+  getProductByCategory,
   updateProduct,
   deleteProduct,
   addToWishlist,

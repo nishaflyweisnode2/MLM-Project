@@ -30,7 +30,11 @@ const {
   generateIDCard,
   searchProducts,
   getTotalMembersInKutumb,
-  getTotalActiveMembers
+  getTotalActiveMembers,
+  addBankDetails,
+  updateBankDetails,
+  getBankDetails,
+  deleteBankDetails
 
 } = require("../Controller/distributorCtrl");
 const { isAuthenticatedUser } = require("../Middleware/auth");
@@ -43,7 +47,7 @@ router.post("/register", createUser);
 router.post("/login", loginUser);
 router.post("/otp/verify/:id", /* isAuthenticatedUser, */ verifyOtp);
 router.post("/forget", /* isAuthenticatedUser, */ ForgetPassword);
-router.post("/reset", isAuthenticatedUser, resetPasswordOTP);
+router.post("/reset", /*isAuthenticatedUser,*/ resetPasswordOTP);
 router.get("/resend/otp/:id", resendOtp);
 router.get("/all-users", getallUser);
 router.get("/:id", isAuthenticatedUser, getaUser);
@@ -70,6 +74,12 @@ router.get('/user/idcard/:userId', isAuthenticatedUser, generateIDCard);
 router.get('/search-products/get', isAuthenticatedUser, searchProducts);
 router.get('/total-members-in-kutumb/:userId', isAuthenticatedUser, getTotalMembersInKutumb);
 router.get('/totalActiveMembers/get', isAuthenticatedUser, getTotalActiveMembers);
+router.post("/bank/add", isAuthenticatedUser, addBankDetails);
+router.put("/bank/update/:userId", isAuthenticatedUser, updateBankDetails);
+router.get("/bank/get", isAuthenticatedUser, getBankDetails);
+router.delete("/bank/delete", isAuthenticatedUser, deleteBankDetails);
+
+
 
 
 

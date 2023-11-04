@@ -68,7 +68,7 @@ const createUser = async (req, res) => {
       });
       await welcomeNotification.save();
 
-      const token = jwt.sign({ _id: newUser._id }, 'mlmunilevelbyflyweis');
+      const token = jwt.sign({ _id: newUser._id }, 'process.env.JWT_SECRET');
 
       res.status(201).json({
         message: "Registration susscessfully",
@@ -1172,6 +1172,121 @@ const getTotalActiveMembers = async (req, res) => {
 
 
 
+const addBankDetails = async (req, res) => {
+  const userId = req.user.id;
+  const { bankName, accountNumber, ifscCode, location } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 404, message: "User not found" });
+    }
+
+    user.bankDetails = {
+      bankName,
+      accountNumber,
+      ifscCode,
+      location,
+    };
+
+    await user.save();
+
+    return res.status(200).json({
+      status: 200,
+      message: "Bank details added successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 500, message: "Server error", error: error.message });
+  }
+};
+
+
+const updateBankDetails = async (req, res) => {
+  const userId = req.params.userId;
+  const { bankName, accountNumber, ifscCode, location } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 404, message: "User not found" });
+    }
+
+    user.bankDetails = {
+      bankName,
+      accountNumber,
+      ifscCode,
+      location,
+    };
+
+    await user.save();
+
+    return res.status(200).json({
+      status: 200,
+      message: "Bank details updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 500, message: "Server error", error: error.message });
+  }
+};
+
+
+
+const getBankDetails = async (req, res) => {
+  const userId = req.user._id;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 404, message: "User not found" });
+    }
+
+    if (!user.bankDetails) {
+      return res.status(200).json({
+        status: 200,
+        message: "Bank details not found",
+        data: null,
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: "Bank details retrieved successfully",
+      data: user.bankDetails, user
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 500, message: "Server error", error: error.message });
+  }
+};
+
+
+const deleteBankDetails = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 404, message: "User not found" });
+    }
+
+    user.bankDetails = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      status: 200,
+      message: "Bank details deleted successfully",
+      data: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 500, message: "Server error", error: error.message });
+  }
+};
 
 
 
@@ -1207,7 +1322,11 @@ module.exports = {
   generateIDCard,
   searchProducts,
   getTotalMembersInKutumb,
-  getTotalActiveMembers
+  getTotalActiveMembers,
+  addBankDetails,
+  updateBankDetails,
+  getBankDetails,
+  deleteBankDetails
 }
 
 
