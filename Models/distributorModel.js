@@ -29,6 +29,9 @@ var userSchema = new mongoose.Schema(
       default: "Distributor",
       enum: ["Distributor", "subDistributor", "Admin"]
     },
+    socialType: {
+      type: String,
+    },
     address: {
       type: String,
     },

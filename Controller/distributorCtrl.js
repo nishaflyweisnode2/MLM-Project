@@ -1289,6 +1289,47 @@ const deleteBankDetails = async (req, res) => {
 };
 
 
+const socialLogin = async (req, res) => {
+  try {
+    const { name, email, mobile, socialType } = req.body;
+
+    const existingUser = await User.findOne({
+      $or: [{ email }, { mobile }],
+      userType: "Distributor",
+    });
+
+    if (existingUser) {
+      const token = jwt.sign({ _id: existingUser._id }, process.env.JWT_SECRET);
+
+      return res.status(200).json({
+        status: 200,
+        msg: "Login successfully",
+        userId: existingUser._id,
+        token,
+      });
+    } else {
+      const newUser = await User.create({ name, email, mobile, socialType, userType: "Distributor" });
+
+      if (newUser) {
+        const token = jwt.sign({ _id: newUser._id }, process.env.JWT_SECRET);
+
+        return res.status(200).json({
+          status: 200,
+          msg: "Login successfully",
+          userId: newUser._id,
+          token,
+        });
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ status: 500, message: "Server error", error: err.message });
+  }
+};
+
+
+
+
 
 
 module.exports = {
@@ -1326,7 +1367,8 @@ module.exports = {
   addBankDetails,
   updateBankDetails,
   getBankDetails,
-  deleteBankDetails
+  deleteBankDetails,
+  socialLogin
 }
 
 

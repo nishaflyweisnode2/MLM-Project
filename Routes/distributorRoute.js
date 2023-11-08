@@ -2,6 +2,7 @@ const express = require("express");
 const {
   createUser,
   loginUser,
+  socialLogin,
   getallUser,
   getaUser,
   deleteaUser,
@@ -46,6 +47,7 @@ const upload = require("../Middleware/upload");
 router.post("/register", createUser);
 router.post("/login", loginUser);
 router.post("/otp/verify/:id", /* isAuthenticatedUser, */ verifyOtp);
+router.post("/user/socialLogin", isAuthenticatedUser, socialLogin);
 router.post("/forget", /* isAuthenticatedUser, */ ForgetPassword);
 router.post("/reset", /*isAuthenticatedUser,*/ resetPasswordOTP);
 router.get("/resend/otp/:id", resendOtp);
