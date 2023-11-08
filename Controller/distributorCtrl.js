@@ -137,11 +137,13 @@ const verifyOtp = async (req, res) => {
           message: "OTP has expired",
         });
       }
+      const token = OTP.generateJwtToken(data._id);
       res.status(200).json({
         success: true,
         message: "OTP Verified Successfully",
         // accessToken: accessToken,
         userId: data._id,
+        token: token,
       });
     }
   } catch (err) {
