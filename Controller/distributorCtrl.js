@@ -1173,7 +1173,7 @@ const getTotalActiveMembers = async (req, res) => {
 
 
 const addBankDetails = async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.params.id;
   const { bankName, accountNumber, ifscCode, location } = req.body;
 
   try {

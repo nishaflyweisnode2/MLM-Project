@@ -74,7 +74,7 @@ router.get('/user/idcard/:userId', isAuthenticatedUser, generateIDCard);
 router.get('/search-products/get', isAuthenticatedUser, searchProducts);
 router.get('/total-members-in-kutumb/:userId', isAuthenticatedUser, getTotalMembersInKutumb);
 router.get('/totalActiveMembers/get', isAuthenticatedUser, getTotalActiveMembers);
-router.post("/bank/add", isAuthenticatedUser, addBankDetails);
+router.post("/bank/add/:id", /*isAuthenticatedUser,*/ addBankDetails);
 router.put("/bank/update/:userId", isAuthenticatedUser, updateBankDetails);
 router.get("/bank/get", isAuthenticatedUser, getBankDetails);
 router.delete("/bank/delete", isAuthenticatedUser, deleteBankDetails);
